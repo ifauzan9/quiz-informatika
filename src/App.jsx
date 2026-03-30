@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Trophy, Play, CheckCircle2, XCircle, Clock, Keyboard, RotateCcw, MonitorPlay, Home, Star, Volume2, VolumeX } from 'lucide-react';
+import { Trophy, Play, CheckCircle2, XCircle, Clock, Keyboard, RotateCcw, MonitorPlay, Home, Star, Volume2, VolumeX, Settings } from 'lucide-react';
 
 // Bank Soal Dasar (Tepat 180 Soal Unik Tingkat SMP)
 const QUESTION_BANK = [
@@ -205,21 +205,10 @@ const SHUFFLE_ARRAY = (array) => {
   return newArray;
 };
 
-// --- LOGIKA PEMBUATAN 225 SOAL (SESI 1-15) ---
-const allUniqueQuestions = [...QUESTION_BANK]; // 180 soal
-const duplicateQuestions = SHUFFLE_ARRAY([...QUESTION_BANK]).slice(0, 45); // 45 soal acak
-const combined225 = SHUFFLE_ARRAY([...allUniqueQuestions, ...duplicateQuestions]); // Total 225 soal acak
-
-const FULL_BANK = [];
-for (let sesi = 1; sesi <= 15; sesi++) {
-  const startIndex = (sesi - 1) * 15;
-  const endIndex = startIndex + 15;
-  const sessionQs = combined225.slice(startIndex, endIndex).map((q) => ({
-    ...q,
-    q: `[Sesi ${sesi}] ${q.q}` 
-  }));
-  FULL_BANK.push(...sessionQs);
-}
+// Siapkan bank acak awal agar urutannya konsisten jika tidak direshuffle
+const allUniqueQuestions = [...QUESTION_BANK];
+const duplicateQuestions = SHUFFLE_ARRAY([...QUESTION_BANK]).slice(0, 45); 
+const combined225 = SHUFFLE_ARRAY([...allUniqueQuestions, ...duplicateQuestions]); 
 
 // ================= AUDIO CONTEXT SYSTEM =================
 let audioCtx = null;
@@ -234,7 +223,7 @@ const initAudioContext = () => {
 };
 
 export default function App() {
-  const [gameState, setGameState] = useState('start'); // 'start', 'playing', 'result', 'ready_check', 'end'
+  const [gameState, setGameState] = useState('start'); 
   const [questions, setQuestions] = useState([]);
   const [currentQIndex, setCurrentQIndex] = useState(0);
   
@@ -252,6 +241,10 @@ export default function App() {
   const [feedback, setFeedback] = useState(null); 
   const [showExitModal, setShowExitModal] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+
+  // --- SETTINGS STATE ---
+  const [timeLimit, setTimeLimit] = useState(20);
+  const [qPerSession, setQPerSession] = useState(15);
 
   // --- FUNGSI PLAY AUDIO ---
   const playTickSound = useCallback((urgent = false) => {
@@ -324,7 +317,7 @@ export default function App() {
   const handleEvaluate = useCallback(() => {
     if (gameState !== 'playing') return;
     setGameState('result');
-    playEvaluationSound(); // 🔔 Mainkan suara selesai/evaluasi
+    playEvaluationSound();
 
     const currentQ = questions[currentQIndex];
     const correctIdx = currentQ.answer;
@@ -385,12 +378,13 @@ export default function App() {
     return () => clearInterval(timer);
   }, [gameState, timeLeft, handleEvaluate, showExitModal]);
 
-  // 🔔 Efek Suara Detik Waktu (Triggered setiap kali timeLeft berkurang)
   useEffect(() => {
-    if (gameState === 'playing' && timeLeft < 20 && timeLeft > 0 && !showExitModal) {
-      playTickSound(timeLeft <= 5); // Suara urgent jika <= 5 detik
+    if (gameState === 'playing' && timeLeft <= 5 && timeLeft > 0 && !showExitModal) {
+      playTickSound(true); // Suara urgent (cepat)
+    } else if (gameState === 'playing' && timeLeft < timeLimit && timeLeft > 0 && !showExitModal) {
+      playTickSound(false); // Suara normal
     }
-  }, [timeLeft, gameState, showExitModal, playTickSound]);
+  }, [timeLeft, gameState, showExitModal, playTickSound, timeLimit]);
 
   useEffect(() => {
     if (gameState === 'playing' && answerMerah !== null && answerBiru !== null) {
@@ -402,18 +396,27 @@ export default function App() {
   }, [answerMerah, answerBiru, gameState, handleEvaluate]);
 
   const startGame = () => {
-    initAudioContext(); // 🔊 Inisialisasi Audio saat tombol mulai diklik agar izin browser diberikan
+    initAudioContext();
 
     let sessionQuestions = [];
     if (selectedSession === 'final') {
-      sessionQuestions = SHUFFLE_ARRAY([...QUESTION_BANK]).slice(0, 20).map((q, i) => ({
+      // Ambil acak sebanyak qPerSession dari bank murni
+      sessionQuestions = SHUFFLE_ARRAY([...QUESTION_BANK]).slice(0, qPerSession).map((q, i) => ({
         ...q,
         q: `[FINAL - Soal ${i + 1}] ${q.q}`
       }));
     } else {
-      const startIndex = (selectedSession - 1) * 15;
-      const endIndex = startIndex + 15;
-      sessionQuestions = FULL_BANK.slice(startIndex, endIndex);
+      // Kalkulasi index dinamis berdasarkan qPerSession agar sesi tidak kehabisan soal
+      const startIdx = ((selectedSession - 1) * qPerSession) % combined225.length;
+      
+      for(let i = 0; i < qPerSession; i++) {
+        // Gunakan modulo agar me-loop kembali ke awal bank jika mencapai batas akhir array
+        const originalQ = combined225[(startIdx + i) % combined225.length];
+        sessionQuestions.push({
+          ...originalQ,
+          q: `[Sesi ${selectedSession} - Soal ${i + 1}] ${originalQ.q}`
+        });
+      }
     }
 
     setQuestions(sessionQuestions);
@@ -428,7 +431,7 @@ export default function App() {
     setAnswerBiru(null);
     setReadyMerah(false);
     setReadyBiru(false);
-    setTimeLeft(20);
+    setTimeLeft(timeLimit); // Menggunakan setting waktu dinamis
     setFeedback(null);
     setGameState('playing');
   };
@@ -493,7 +496,6 @@ export default function App() {
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div className="bg-red-900/40 p-3 rounded-xl border border-red-500/30">
               <h2 className="text-lg font-bold text-red-400 mb-1">TIM MERAH</h2>
-              <p className="text-xs text-slate-400 mb-2">Gunakan Keyboard Kiri</p>
               <div className="flex justify-center gap-1">
                 {['A', 'S', 'D', 'F'].map(k => (
                   <kbd key={k} className="px-2 py-1 bg-slate-700 rounded-md font-mono font-bold text-red-300 border-b-2 border-slate-900 text-sm">{k}</kbd>
@@ -502,7 +504,6 @@ export default function App() {
             </div>
             <div className="bg-blue-900/40 p-3 rounded-xl border border-blue-500/30">
               <h2 className="text-lg font-bold text-blue-400 mb-1">TIM BIRU</h2>
-              <p className="text-xs text-slate-400 mb-2">Gunakan Keyboard Kanan</p>
               <div className="flex justify-center gap-1">
                 {['H', 'J', 'K', 'L'].map(k => (
                   <kbd key={k} className="px-2 py-1 bg-slate-700 rounded-md font-mono font-bold text-blue-300 border-b-2 border-slate-900 text-sm">{k}</kbd>
@@ -511,20 +512,46 @@ export default function App() {
             </div>
           </div>
 
-          <div className="bg-slate-700/50 p-2.5 rounded-lg text-left mb-4 max-w-2xl mx-auto">
-            <h3 className="font-bold text-amber-400 mb-1 text-sm">Aturan Main:</h3>
-            <ul className="list-disc pl-5 text-xs text-slate-300 space-y-0.5">
-              <li>Pilih jawaban secara rahasia! Lawan tidak tahu jawabanmu.</li>
-              <li>Hasil dievaluasi <b>setelah kedua tim menjawab</b> ATAU waktu habis.</li>
-              <li>Setiap ganti soal, kedua tim harus mengonfirmasi kesiapan.</li>
-              <li>Benar = <span className="text-emerald-400 font-bold">+10</span>, Salah = <span className="text-red-400 font-bold">-5</span></li>
-            </ul>
+          {/* AREA PENGATURAN WAKTU DAN SOAL */}
+          <div className="mb-4 bg-slate-700/40 p-3 rounded-xl border border-slate-600 w-full max-w-2xl mx-auto">
+            <div className="flex items-center justify-center gap-2 mb-3 text-amber-400 font-bold text-sm">
+              <Settings className="w-4 h-4" /> Pengaturan Sesi
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               <div>
+                  <label className="text-xs text-slate-300 block mb-1 font-semibold">Waktu per Soal (Detik):</label>
+                  <div className="flex bg-slate-800/80 rounded-lg p-1 border border-slate-600/50 shadow-inner">
+                     {[10, 15, 20, 30].map(t => (
+                       <button 
+                         key={t} 
+                         onClick={() => setTimeLimit(t)} 
+                         className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${timeLimit === t ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'}`}
+                       >
+                         {t}s
+                       </button>
+                     ))}
+                  </div>
+               </div>
+               <div>
+                  <label className="text-xs text-slate-300 block mb-1 font-semibold">Jumlah Soal per Sesi:</label>
+                  <div className="flex bg-slate-800/80 rounded-lg p-1 border border-slate-600/50 shadow-inner">
+                     {[5, 10, 15, 20].map(q => (
+                       <button 
+                         key={q} 
+                         onClick={() => setQPerSession(q)} 
+                         className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${qPerSession === q ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'}`}
+                       >
+                         {q} Soal
+                       </button>
+                     ))}
+                  </div>
+               </div>
+            </div>
           </div>
 
           <div className="mb-4 w-full max-w-2xl mx-auto">
             <h3 className="text-sm font-bold text-slate-300 mb-2 text-center">Pilih Sesi Permainan:</h3>
             
-            {/* Sesi Reguler 1-15 */}
             <div className="grid grid-cols-5 gap-2 mb-3">
               {Array.from({ length: 15 }, (_, i) => i + 1).map(sesi => (
                 <button
@@ -541,7 +568,6 @@ export default function App() {
               ))}
             </div>
 
-            {/* Tombol Sesi Final */}
             <button
               onClick={() => setSelectedSession('final')}
               className={`w-full py-2.5 rounded-lg font-black border-2 transition-all flex items-center justify-center gap-2 text-sm md:text-base tracking-widest uppercase ${
@@ -551,7 +577,7 @@ export default function App() {
               }`}
             >
               <Star className={`w-5 h-5 ${selectedSession === 'final' ? 'fill-slate-900' : 'fill-amber-500'}`} />
-              Sesi Final (Acak 20 Soal)
+              Sesi Final (Acak {qPerSession} Soal)
               <Star className={`w-5 h-5 ${selectedSession === 'final' ? 'fill-slate-900' : 'fill-amber-500'}`} />
             </button>
           </div>
