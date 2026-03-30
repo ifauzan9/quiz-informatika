@@ -436,6 +436,7 @@ export default function App() {
     setGameState('playing');
   };
 
+  // --- KEYBOARD LISTENER ---
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (showExitModal) return;
@@ -443,23 +444,25 @@ export default function App() {
       const key = e.key.toLowerCase();
 
       if (gameState === 'playing') {
+        // Kontrol Tim Merah Baru (A, S, Z, X)
         if (answerMerah === null) {
           if (key === 'a') setAnswerMerah(0);
           if (key === 's') setAnswerMerah(1);
-          if (key === 'd') setAnswerMerah(2);
-          if (key === 'f') setAnswerMerah(3);
+          if (key === 'z') setAnswerMerah(2);
+          if (key === 'x') setAnswerMerah(3);
         }
+        // Kontrol Tim Biru Baru (H, J, N, M)
         if (answerBiru === null) {
           if (key === 'h') setAnswerBiru(0);
           if (key === 'j') setAnswerBiru(1);
-          if (key === 'k') setAnswerBiru(2);
-          if (key === 'l') setAnswerBiru(3);
+          if (key === 'n') setAnswerBiru(2);
+          if (key === 'm') setAnswerBiru(3);
         }
       }
 
       if (gameState === 'ready_check') {
-        if (['a', 's', 'd', 'f'].includes(key)) setReadyMerah(true);
-        if (['h', 'j', 'k', 'l'].includes(key)) setReadyBiru(true);
+        if (['a', 's', 'z', 'x'].includes(key)) setReadyMerah(true);
+        if (['h', 'j', 'n', 'm'].includes(key)) setReadyBiru(true);
       }
     };
 
@@ -496,16 +499,18 @@ export default function App() {
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div className="bg-red-900/40 p-3 rounded-xl border border-red-500/30">
               <h2 className="text-lg font-bold text-red-400 mb-1">TIM MERAH</h2>
+              <p className="text-xs text-slate-400 mb-2">Gunakan Keyboard Kiri</p>
               <div className="flex justify-center gap-1">
-                {['A', 'S', 'D', 'F'].map(k => (
+                {['A', 'S', 'Z', 'X'].map(k => (
                   <kbd key={k} className="px-2 py-1 bg-slate-700 rounded-md font-mono font-bold text-red-300 border-b-2 border-slate-900 text-sm">{k}</kbd>
                 ))}
               </div>
             </div>
             <div className="bg-blue-900/40 p-3 rounded-xl border border-blue-500/30">
               <h2 className="text-lg font-bold text-blue-400 mb-1">TIM BIRU</h2>
+              <p className="text-xs text-slate-400 mb-2">Gunakan Keyboard Kanan</p>
               <div className="flex justify-center gap-1">
-                {['H', 'J', 'K', 'L'].map(k => (
+                {['H', 'J', 'N', 'M'].map(k => (
                   <kbd key={k} className="px-2 py-1 bg-slate-700 rounded-md font-mono font-bold text-blue-300 border-b-2 border-slate-900 text-sm">{k}</kbd>
                 ))}
               </div>
@@ -789,8 +794,10 @@ export default function App() {
               <div key={i} className={`border-2 rounded-xl p-3 flex items-center shadow relative transition-all duration-300 min-h-[4rem] ${boxClass}`}>
                 <div className={`absolute left-0 top-0 bottom-0 w-12 flex flex-col justify-center items-center border-r rounded-l-xl ${isFinalMode ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-700/50 border-slate-600/50'}`}>
                   <div className="flex flex-col gap-1">
-                    <span className="bg-red-500/20 text-red-300 font-black px-1.5 py-0.5 rounded border border-red-500/50 text-xs">{['A', 'S', 'D', 'F'][i]}</span>
-                    <span className="bg-blue-500/20 text-blue-300 font-black px-1.5 py-0.5 rounded border border-blue-500/50 text-xs">{['H', 'J', 'K', 'L'][i]}</span>
+                    {/* Indikator Tombol Merah Baru */}
+                    <span className="bg-red-500/20 text-red-300 font-black px-1.5 py-0.5 rounded border border-red-500/50 text-xs">{['A', 'S', 'Z', 'X'][i]}</span>
+                    {/* Indikator Tombol Biru Baru */}
+                    <span className="bg-blue-500/20 text-blue-300 font-black px-1.5 py-0.5 rounded border border-blue-500/50 text-xs">{['H', 'J', 'N', 'M'][i]}</span>
                   </div>
                 </div>
 
@@ -816,7 +823,8 @@ export default function App() {
          <div className={`flex items-center gap-3 transition-all duration-300 ${answerMerah !== null ? 'opacity-30 grayscale blur-[1px]' : 'opacity-100'}`}>
            <Keyboard className="text-red-500 w-5 h-5" />
            <div className="flex gap-1.5">
-             {['A', 'S', 'D', 'F'].map((k, i) => (
+             {/* Tampilan Key Merah Baru */}
+             {['A', 'S', 'Z', 'X'].map((k, i) => (
                <div key={k} className="text-center">
                  <kbd className="inline-block px-2 py-0.5 bg-red-900 text-red-200 rounded text-xs font-mono font-bold border-b-2 border-red-950">{k}</kbd>
                </div>
@@ -826,7 +834,8 @@ export default function App() {
 
          <div className={`flex items-center gap-3 transition-all duration-300 ${answerBiru !== null ? 'opacity-30 grayscale blur-[1px]' : 'opacity-100'}`}>
            <div className="flex gap-1.5">
-             {['H', 'J', 'K', 'L'].map((k, i) => (
+             {/* Tampilan Key Biru Baru */}
+             {['H', 'J', 'N', 'M'].map((k, i) => (
                <div key={k} className="text-center">
                  <kbd className="inline-block px-2 py-0.5 bg-blue-900 text-blue-200 rounded text-xs font-mono font-bold border-b-2 border-blue-950">{k}</kbd>
                </div>
